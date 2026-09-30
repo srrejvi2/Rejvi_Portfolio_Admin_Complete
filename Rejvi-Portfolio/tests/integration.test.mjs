@@ -15,13 +15,13 @@ test('portfolio security, content, inbox, upload and persistence',async()=>{try{
  const db=new DatabaseSync(join(dir,'portfolio.sqlite')),salt=randomBytes(24).toString('hex');db.prepare('INSERT INTO admin VALUES(1,?,?,?)').run('owner@example.com',salt,scryptSync('test-password-12345',salt,64).toString('hex'));db.close();
  assert.equal((await req('/api/admin/content')).status,401);
  assert.equal((await req('/api/login','POST',{email:'owner@example.com',password:'wrong'},false)).status,401);
- const login=await req('/api/login','POST',{email:'owner@example.com',password:'test-password-12345'},false);assert.equal(login.status,200);cookie=login.cookie.split(';')[0];csrf=login.body.csrf;assert.match(login.cookie,/HttpOnly/);
+ const login=await req('/api/login','POST',{email:'owner@example.com',password:'test-password-12345'},false);assert.equal(login.status,200);cookie=login.cookie.split(';')[0];csrf=login.body.csrf;assert.match(login.cookie,/HttpOnly/);assert.match(login.cookie,/Max-Age=1800/);
  const original=(await req('/api/admin/content')).body;assert.equal(original.projects.length,3);
  assert.equal((await req('/api/admin/content','PUT',original,true,{'X-CSRF-Token':'bad'})).status,403);
  assert.equal((await req('/api/admin/content','PUT',original,true,{Origin:'https://evil.example'})).status,403);
- const edited=structuredClone(original);edited.profile.name='Saved Test';edited.projects[0].published=false;
+ const edited=structuredClone(original);edited.profile.name='Saved Test';edited.projects[0].published=false;edited.site.theme='midnight';edited.site.font='rounded';edited.site.petType='fox';edited.site.petInterval='30';edited.events=[{id:'event-test',title:'Test celebration',message:'Hello visitors',start:'2026-10-01',end:'2026-10-02',emoji:'✨',style:'celebration',enabled:true,annual:false}];
  const saved=await req('/api/admin/content','PUT',edited);assert.equal(saved.status,200,JSON.stringify(saved.body));edited._revision=saved.body.revision;assert.equal((await req('/api/admin/content','PUT',original)).status,409);
- const pub=(await req('/api/content')).body;assert.equal(pub.profile.name,'Saved Test');assert.equal(pub.projects.length,2);
+ const pub=(await req('/api/content')).body;assert.equal(pub.profile.name,'Saved Test');assert.equal(pub.projects.length,2);assert.equal(pub.site.theme,'midnight');assert.equal(pub.site.petType,'fox');assert.equal(pub.events[0].title,'Test celebration');
  edited.profile.github='javascript:alert(1)';assert.equal((await req('/api/admin/content','PUT',edited)).status,400);
  assert.equal((await req('/api/contact','POST',{name:'Visitor',email:'visitor@example.com',message:'A valid test conversation.'},false)).status,201);
  const messages=(await req('/api/admin/messages')).body;assert.equal(messages.length,1);

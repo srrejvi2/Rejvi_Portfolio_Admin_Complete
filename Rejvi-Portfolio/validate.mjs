@@ -12,7 +12,7 @@ export function validate(data){record(data);record(data.profile);record(data.sit
 for(const f of Object.keys(profileFields))c.profile[f]=valField(f,data.profile[f]);
 if(!c.profile.name||!c.profile.headline)fail(400,'Profile name and headline are required.');if(c.profile.email&&!email(c.profile.email))fail(400,'Invalid public email.');
 for(const [k,v] of Object.entries(defaults.site)){if(Array.isArray(v))continue;c.site[k]=typeof v==='boolean'?data.site[k]===true:valField(k,data.site[k]??v);}
-if(!['blue','violet','teal','rose','orange'].includes(c.site.accent)||!['sans','editorial','mono'].includes(c.site.font)||!['soft','square'].includes(c.site.corners))fail(400,'Invalid appearance option.');
+if(!['blue','violet','teal','rose','orange'].includes(c.site.accent)||!['cloud','midnight','warm','glass','ink'].includes(c.site.theme)||!['sans','editorial','mono','humanist','rounded','classic'].includes(c.site.font)||!['soft','square'].includes(c.site.corners)||!['cat','dog','bird','fox','robot'].includes(c.site.petType)||!/^(?:[1-9]|[1-9][0-9]|1[0-8][0-9])$/.test(String(c.site.petInterval||'')))fail(400,'Invalid appearance or visitor experience option.');
 c.site.socials=arr(data.site.socials||[],20).map(x=>({label:str(record(x).label,50),url:url(x.url)}));
 for(const [k,v] of Object.entries(defaults.copy))c.copy[k]=str(data.copy[k]??v,5000);
 const used=new Set(),ids=new Set();

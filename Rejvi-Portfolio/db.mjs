@@ -215,6 +215,7 @@ function getStmt(sql){
    if(low==='insert into limits values(?,1,?)'){state.limits.push({key:p[0],count:1,expires:Number(p[1])});markDirty();return {changes:1,lastInsertRowid:0};}
    if(low==='delete from sessions where expires<?'){const n=state.sessions.length;state.sessions=state.sessions.filter(x=>Number(x.expires)>=Number(p[0]));if(n!==state.sessions.length)markDirty();return {changes:n-state.sessions.length,lastInsertRowid:0};}
    if(low==='insert into sessions values(?,?,?)'){state.sessions=state.sessions.filter(x=>x.token!==p[0]);state.sessions.push({token:p[0],csrf:p[1],expires:Number(p[2])});markDirty();return {changes:1,lastInsertRowid:0};}
+   if(low==='update sessions set expires=? where token=?'){const r=state.sessions.find(x=>x.token===p[1]);if(!r)return result;r.expires=Number(p[0]);markDirty();return {changes:1,lastInsertRowid:0};}
    if(low.startsWith('insert into messages(name,email,message,created) values')){const id=nextId(state.messages);state.messages.push({id,name:p[0],email:p[1],message:p[2],status:'unread',created:p[3]});markDirty();return {changes:1,lastInsertRowid:id};}
    if(low.startsWith('insert into messages values(')){const id=Number(p[0]);state.messages.push({id,name:p[1],email:p[2],message:p[3],status:p[4],created:p[5]});markDirty();return {changes:1,lastInsertRowid:id};}
    if(low==='insert into content_history(json,created) values(?,?)'){const id=nextId(state.content_history);state.content_history.push({id,json:p[0],created:p[1]});markDirty();return {changes:1,lastInsertRowid:id};}

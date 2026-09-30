@@ -6,6 +6,7 @@ import {db,root,dataDir,getContent,flushState,listMedia,saveMedia,removeMedia,re
 import {validate,fail} from './validate.mjs';
 import {handleArticles} from './articles.mjs';
 const port=Number(process.env.PORT||3000), production=process.env.NODE_ENV==='production';
+const SESSION_IDLE_MS=30*60e3;
 const normalizeOrigin=value=>{
  const raw=String(value||'').trim().replace(/^['"]|['"]$/g,'').replace(/\/+$/,'');
  if(!raw)return '';
@@ -39,7 +40,7 @@ const server=http.createServer(async(req,res)=>{
  if(mutation && !String(req.headers['content-type']).startsWith('application/json'))fail(415,'JSON required.');
  const token=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('session='))?.slice(8)||'';
  const session=token?db.prepare('SELECT * FROM sessions WHERE token=? AND expires>?').get(digest(token),Date.now()):null;
- const auth=()=>{if(!session)fail(401,'Please sign in.');if(mutation&&req.headers['x-csrf-token']!==session.csrf)fail(403,'Session verification failed. Reload and retry.');};
+ const auth=()=>{if(!session)fail(401,'Please sign in.');if(mutation&&req.headers['x-csrf-token']!==session.csrf)fail(403,'Session verification failed. Reload and retry.');const next=Date.now()+SESSION_IDLE_MS;db.prepare('UPDATE sessions SET expires=? WHERE token=?').run(next,session.token);session.expires=next;res.setHeader('Set-Cookie',`session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=1800${production?'; Secure':''}`);};
  const ip=process.env.TRUST_PROXY==='1'?String(req.headers['x-forwarded-for']||req.socket.remoteAddress).split(',').at(-1).trim():req.socket.remoteAddress;
  if(path==='/api/health'&&req.method==='GET')return send(200,{ok:true});
  if(path==='/api/content'&&req.method==='GET'){const c=getContent();c.projects=c.projects.filter(p=>p.published);c.pages=c.pages.filter(p=>p.visible);return send(200,c);}
@@ -51,8 +52,8 @@ const server=http.createServer(async(req,res)=>{
  if(typeof b.password!=='string'||b.password.length>200||typeof b.email!=='string')fail(400,'Invalid credentials.');
  const h=scryptSync(b.password,a.salt,64);if(!timingSafeEqual(h,Buffer.from(a.hash,'hex'))||b.email.trim().toLowerCase()!==a.email)fail(401,'Email or password is incorrect.');
  const t=randomBytes(32).toString('hex'),csrf=randomBytes(24).toString('hex');
- db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(t),csrf,Date.now()+8*3600e3);
- res.setHeader('Set-Cookie',`session=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${production?'; Secure':''}`);return send(200,{csrf,email:a.email});
+ db.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now());db.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(t),csrf,Date.now()+SESSION_IDLE_MS);
+ res.setHeader('Set-Cookie',`session=${t}; HttpOnly; SameSite=Strict; Path=/; Max-Age=1800${production?'; Secure':''}`);return send(200,{csrf,email:a.email,timeoutMinutes:30});
  }
  if(path==='/api/contact'&&req.method==='POST'){
  if(!getContent().site.contact)fail(403,'Contact form is disabled.');limit('contact:'+ip,5,3600e3);const b=await body(req);
@@ -97,12 +98,31 @@ const server=http.createServer(async(req,res)=>{
  if(path.startsWith('/api/'))fail(404,'Endpoint not found.');
  if(!['GET','HEAD'].includes(req.method))fail(405,'Method not allowed.');
  if(path==='/theme.css'){
- const c=getContent().site;const colors={blue:['#315bff','#edf2ff'],violet:['#7244da','#f3efff'],teal:['#007f77','#e9f9f5'],rose:['#bb3568','#fff0f5'],orange:['#aa4c13','#fff3e9']};const [accent,tint]=colors[c.accent]||colors.blue;
- const font={sans:'Inter,Segoe UI,Arial,sans-serif',editorial:'Georgia,Times New Roman,serif',mono:'Consolas,monospace'}[c.font]||'Arial,sans-serif';
- res.writeHead(200,{'Content-Type':'text/css','Cache-Control':'no-cache'});return res.end(`:root{--accent:${accent};--tint:${tint};--radius:${c.corners==='square'?'4px':'20px'};--heading:${font}}`);
+  const c=getContent().site;
+  const colors={blue:['#315bff','#edf2ff'],violet:['#7244da','#f3efff'],teal:['#007f77','#e9f9f5'],rose:['#bb3568','#fff0f5'],orange:['#aa4c13','#fff3e9']};const [accent,tint]=colors[c.accent]||colors.blue;
+  const fonts={
+   sans:{heading:'Inter,"Segoe UI",Arial,sans-serif',body:'Inter,"Segoe UI",Arial,sans-serif'},
+   editorial:{heading:'Georgia,"Times New Roman",serif',body:'"Segoe UI",Arial,sans-serif'},
+   mono:{heading:'Consolas,"SFMono-Regular",monospace',body:'"Segoe UI",Arial,sans-serif'},
+   humanist:{heading:'"Trebuchet MS","Segoe UI",Arial,sans-serif',body:'"Segoe UI",Aptos,Arial,sans-serif'},
+   rounded:{heading:'"Arial Rounded MT Bold","Trebuchet MS","Segoe UI",sans-serif',body:'"Trebuchet MS","Segoe UI",Arial,sans-serif'},
+   classic:{heading:'Palatino,"Palatino Linotype",Georgia,serif',body:'Georgia,"Times New Roman",serif'}
+  };const f=fonts[c.font]||fonts.sans;
+  const themes={
+   cloud:{bg:'#ffffff',ink:'#182034',muted:'#667086',line:'#e5e9f0',soft:'#f7f9fc',surface:'#ffffff',header:'#fffffff5',shadow:'0 18px 60px #2134540b',scheme:'light'},
+   midnight:{bg:'#0b1220',ink:'#f5f7fb',muted:'#aab5c7',line:'#263349',soft:'#101a2c',surface:'#142036',header:'#0b1220ee',shadow:'0 18px 60px #00000038',scheme:'dark'},
+   warm:{bg:'#fffaf2',ink:'#2d251e',muted:'#78695b',line:'#eadfce',soft:'#fbf3e7',surface:'#fffdf9',header:'#fffaf2f2',shadow:'0 18px 60px #6b4b2412',scheme:'light'},
+   glass:{bg:'#f3f7ff',ink:'#14203a',muted:'#65728b',line:'#dce4f3',soft:'#eaf1ff',surface:'#ffffffcc',header:'#f7faffcc',shadow:'0 22px 70px #315bff16',scheme:'light'},
+   ink:{bg:'#f7f7f5',ink:'#111111',muted:'#676767',line:'#dcdcd7',soft:'#eeeeea',surface:'#ffffff',header:'#f7f7f5f2',shadow:'0 18px 50px #00000010',scheme:'light'}
+  };const t=themes[c.theme]||themes.cloud;const radius=c.corners==='square'?'4px':'20px';
+  const css=`:root{color-scheme:${t.scheme};--accent:${accent};--tint:${tint};--radius:${radius};--heading:${f.heading};--body:${f.body};--bg:${t.bg};--ink:${t.ink};--muted:${t.muted};--line:${t.line};--soft:${t.soft};--surface:${t.surface};--header-bg:${t.header};--shadow:${t.shadow}}
+body{background:var(--bg);color:var(--ink)}#header{background:var(--header-bg)}.button,.secondary,.developer-card,.service-card,.article-card,.contact-form,.info-card,.panel,.media-item,.media-choice,.login-card,.icon-button,.format-tools button,.stat,.article-row,.welcome-panel{background:var(--surface);color:var(--ink)}.soft-section,#footer{background:var(--soft)}.tags span{color:var(--muted)}.developer-card pre,.code-top{background:color-mix(in srgb,var(--surface) 94%,var(--soft));color:var(--muted)}.portrait-caption{background:color-mix(in srgb,var(--surface) 92%,transparent)}.article-card,.service-card,.skill-card,.quote-card,.developer-card,.panel,.contact-form,.info-card{border-color:var(--line)}.admin-body,.admin-main{background:var(--soft)}.sidebar,.admin-top{background:var(--surface)}.nav-group button,.breadcrumb,.stat>span,.stat small{color:var(--muted)}.welcome-panel,.tip-card,.notice{border-color:var(--line)}input,textarea,select{background:var(--surface);color:var(--ink);border-color:var(--line)}dialog{background:var(--surface);color:var(--ink)}
+html[data-visitor-theme="dark"]{color-scheme:dark;--bg:#0b1220;--ink:#f5f7fb;--muted:#aab5c7;--line:#263349;--soft:#101a2c;--surface:#142036;--header-bg:#0b1220ee;--shadow:0 18px 60px #00000038}
+html[data-visitor-theme="light"]{color-scheme:light;--bg:#ffffff;--ink:#182034;--muted:#667086;--line:#e5e9f0;--soft:#f7f9fc;--surface:#ffffff;--header-bg:#fffffff5;--shadow:0 18px 60px #2134540b}`;
+  res.writeHead(200,{'Content-Type':'text/css','Cache-Control':'no-cache'});return res.end(css);
  }
  let file;if(!remoteStorage&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
- const allowed={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/style.css':'style.css','/app.js':'app.js','/admin.js':'admin.js','/favicon.svg':'favicon.svg','/robots.txt':'robots.txt','/schema.js':'schema.js','/shared.js':'shared.js','/admin.css':'admin.css','/fonts/bengali-400.woff2':'fonts/bengali-400.woff2','/fonts/bengali-600.woff2':'fonts/bengali-600.woff2','/fonts/bengali-700.woff2':'fonts/bengali-700.woff2'};
+ const allowed={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/style.css':'style.css','/app.js':'app.js','/admin.js':'admin.js','/favicon.svg':'favicon.svg','/robots.txt':'robots.txt','/schema.js':'schema.js','/shared.js':'shared.js','/admin.css':'admin.css','/sw.js':'sw.js','/fonts/bengali-400.woff2':'fonts/bengali-400.woff2','/fonts/bengali-600.woff2':'fonts/bengali-600.woff2','/fonts/bengali-700.woff2':'fonts/bengali-700.woff2'};
  let selected=allowed[path];let pageTitle='',description='',articleBody='';
  if(!selected){const c=getContent();const pg=c.pages.find(p=>p.visible&&('/'+p.slug)===path);const pr=path.match(/^\/projects\/([\w-]+)$/);const ar=path.match(/^\/articles\/([a-z0-9-]+)$/);
  if(pg){selected='index.html';pageTitle=pg.title||pg.label;description=pg.subtitle;}
