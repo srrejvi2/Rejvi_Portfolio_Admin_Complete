@@ -1,5 +1,5 @@
 import http from 'node:http';
-import {readFile,writeFile,mkdir,readdir,stat} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,readdir,stat,unlink} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {randomBytes,scryptSync,timingSafeEqual,createHash} from 'node:crypto';
 import {db,root,dataDir,getContent} from './db.mjs';
@@ -71,7 +71,10 @@ const server=http.createServer(async(req,res)=>{
  }
  if(path==='/api/admin/history'&&req.method==='GET')return send(200,db.prepare('SELECT id,created FROM content_history ORDER BY id DESC').all());
  const hm=path.match(/^\/api\/admin\/history\/(\d+)$/);if(hm&&req.method==='GET'){const h=db.prepare('SELECT * FROM content_history WHERE id=?').get(+hm[1]);if(!h)fail(404,'Revision not found.');return send(200,JSON.parse(h.json));}
- if(path==='/api/admin/media'&&req.method==='GET'){await mkdir(resolve(dataDir,'uploads'),{recursive:true});const names=await readdir(resolve(dataDir,'uploads'));const files=await Promise.all(names.filter(n=>/^[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(n)).map(async name=>{const f=await stat(resolve(dataDir,'uploads',name));return {name,url:'/uploads/'+name,size:f.size,created:f.mtime.toISOString()};}));return send(200,files.sort((a,b)=>b.created.localeCompare(a.created)));}
+ const mediaInUse=url=>{const contentJson=db.prepare('SELECT json FROM content WHERE id=1').get()?.json||'';if(contentJson.includes(url))return true;return !!db.prepare('SELECT 1 FROM articles WHERE cover=? OR body LIKE ? LIMIT 1').get(url,'%'+url+'%');};
+ if(path==='/api/admin/media'&&req.method==='GET'){await mkdir(resolve(dataDir,'uploads'),{recursive:true});const names=await readdir(resolve(dataDir,'uploads'));const files=await Promise.all(names.filter(n=>/^[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(n)).map(async name=>{const f=await stat(resolve(dataDir,'uploads',name)),url='/uploads/'+name;return {name,url,size:f.size,created:f.mtime.toISOString(),inUse:mediaInUse(url)};}));return send(200,files.sort((a,b)=>b.created.localeCompare(a.created)));}
+ const mediaDelete=path.match(/^\/api\/admin\/media\/([a-f0-9]+\.(?:png|jpg|webp|pdf))$/);
+ if(mediaDelete&&req.method==='DELETE'){const b=await body(req),name=mediaDelete[1],url='/uploads/'+name,inUse=mediaInUse(url);if(inUse&&!b.force)fail(409,'This file is still used on the website. Remove its reference first, or confirm permanent deletion.');try{await unlink(resolve(dataDir,'uploads',name));}catch(e){if(e.code==='ENOENT')fail(404,'File not found.');throw e;}return send(200,{ok:true,url,inUse});}
  if(path==='/api/admin/account'&&req.method==='PUT'){const b=await body(req),a=db.prepare('SELECT * FROM admin WHERE id=1').get();if(!validEmail(b.email)||typeof b.password!=='string'||b.password.length>200)fail(400,'Enter a valid email and your current password.');if(!timingSafeEqual(scryptSync(b.password,a.salt,64),Buffer.from(a.hash,'hex')))fail(400,'Password is incorrect.');db.prepare('UPDATE admin SET email=? WHERE id=1').run(b.email.trim().toLowerCase());return send(200,{ok:true});}
 
  if(path==='/api/admin/messages'&&req.method==='GET')return send(200,db.prepare('SELECT * FROM messages ORDER BY id DESC LIMIT 1000').all());

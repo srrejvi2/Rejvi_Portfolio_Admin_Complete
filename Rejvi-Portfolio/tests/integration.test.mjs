@@ -29,6 +29,8 @@ test('portfolio security, content, inbox, upload and persistence',async()=>{try{
  assert.equal((await req('/api/admin/messages')).body[0].status,'read');
  assert.equal((await req('/api/admin/upload','POST',{data:Buffer.from('<svg>bad content</svg>').toString('base64')})).status,400);
  const upload=await req('/api/admin/upload','POST',{data:Buffer.from('%PDF-1.4\ntest document').toString('base64')});assert.equal(upload.status,201);assert.equal((await fetch(origin+upload.body.url)).status,200);
+ const media=(await req('/api/admin/media')).body;assert.equal(media.length,1);assert.equal(media[0].inUse,false);
+ const mediaName=upload.body.url.split('/').pop();assert.equal((await req('/api/admin/media/'+mediaName,'DELETE',{force:false})).status,200);assert.equal((await fetch(origin+upload.body.url)).status,404);
  assert.equal((await fetch(origin+'/data/portfolio.sqlite')).status,404);
  assert.equal((await req('/api/admin/export')).body.messages.length,1);
  const checkDb=new DatabaseSync(join(dir,'portfolio.sqlite'));assert.equal(JSON.parse(checkDb.prepare('SELECT json FROM content').get().json).profile.name,'Saved Test');checkDb.close();
