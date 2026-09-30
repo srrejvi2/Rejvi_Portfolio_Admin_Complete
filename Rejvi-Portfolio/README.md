@@ -96,7 +96,7 @@ This distribution has not been publicly deployed. It needs a Node/Docker host, *
 1. Put the source in your own Git repository, excluding `.env` and `data/`.
 2. Use Node 24+. Build command: `npm install --omit=dev`. Start command: `npm start`.
 3. Attach a persistent disk, for example mounted at `/var/data`, and set `DATA_DIR=/var/data/rejvi`.
-4. Set `NODE_ENV=production` and `APP_ORIGIN=https://your-exact-domain`, without a trailing slash. Let the host supply `PORT`.
+4. Set `NODE_ENV=production` and `APP_ORIGIN=https://your-exact-domain`. The server normalizes whitespace/trailing slashes; multiple allowed origins can be comma-separated. Let the host supply `PORT`.
 5. Deploy. In the host’s running-service shell, run `npm run setup`, or securely transfer your backed-up existing data to the persistent directory. Do not create the owner during a build step that cannot access the persistent disk.
 6. Use `/admin`, personalize content and test contact/comments/reactions on the deployed domain.
 7. If switching to a custom domain, update APP_ORIGIN, restart, and redirect alternate domains to the canonical domain.

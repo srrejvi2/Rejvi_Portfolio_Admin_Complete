@@ -6,8 +6,19 @@ import {db,root,dataDir,getContent} from './db.mjs';
 import {validate,fail} from './validate.mjs';
 import {handleArticles} from './articles.mjs';
 const port=Number(process.env.PORT||3000), production=process.env.NODE_ENV==='production';
-const origin=process.env.APP_ORIGIN||`http://localhost:${port}`;
-if(production && !/^https:\/\/[^/]+$/.test(origin)) throw Error('Production requires APP_ORIGIN=https://your-domain without a trailing slash');
+const normalizeOrigin=value=>{
+ const raw=String(value||'').trim().replace(/^['"]|['"]$/g,'').replace(/\/+$/,'');
+ if(!raw)return '';
+ try{return new URL(raw).origin;}catch{return raw;}
+};
+const configuredOrigins=new Set(String(process.env.APP_ORIGIN||`http://localhost:${port}`).split(',').map(normalizeOrigin).filter(Boolean));
+const canonicalOrigin=[...configuredOrigins][0]||`http://localhost:${port}`;
+if(production && (![...configuredOrigins].length||[...configuredOrigins].some(x=>!/^https:\/\/[^/]+$/.test(x)))) throw Error('Production requires APP_ORIGIN=https://your-domain (comma-separate multiple origins if needed)');
+const requestOrigins=req=>{
+ const proto=String(req.headers['x-forwarded-proto']||'').split(',')[0].trim().toLowerCase()||(req.socket.encrypted?'https':'http');
+ const hosts=[req.headers.host,...String(req.headers['x-forwarded-host']||'').split(',')].map(x=>String(x||'').trim()).filter(Boolean);
+ return new Set(hosts.map(host=>normalizeOrigin(`${proto}://${host}`)).filter(Boolean));
+};
 const digest=x=>createHash('sha256').update(x).digest('hex');
 const validEmail=x=>typeof x==='string'&&x.length<255&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x);
 function limit(key,max,ms){const now=Date.now();db.prepare('DELETE FROM limits WHERE expires<?').run(now);const r=db.prepare('SELECT * FROM limits WHERE key=?').get(key);if(r&&r.count>=max)fail(429,'Too many attempts. Please try again later.');if(r)db.prepare('UPDATE limits SET count=count+1 WHERE key=?').run(key);else db.prepare('INSERT INTO limits VALUES(?,1,?)').run(key,now+ms);}
@@ -20,7 +31,11 @@ const server=http.createServer(async(req,res)=>{
  try {
  const path=new URL(req.url,'http://localhost').pathname;
  const mutation=!['GET','HEAD'].includes(req.method);
- if(mutation && req.headers.origin!==origin)fail(403,'Origin rejected. Check APP_ORIGIN.');
+ if(mutation){
+  const incomingOrigin=normalizeOrigin(req.headers.origin);
+  const sameRequestOrigin=requestOrigins(req).has(incomingOrigin);
+  if(!incomingOrigin||(!configuredOrigins.has(incomingOrigin)&&!sameRequestOrigin))fail(403,'Origin rejected. Check APP_ORIGIN.');
+ }
  if(mutation && !String(req.headers['content-type']).startsWith('application/json'))fail(415,'JSON required.');
  const token=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('session='))?.slice(8)||'';
  const session=token?db.prepare('SELECT * FROM sessions WHERE token=? AND expires>?').get(digest(token),Date.now()):null;
@@ -105,4 +120,4 @@ const server=http.createServer(async(req,res)=>{
  }catch(e){if(!res.headersSent)send(e.status||(e.code==='ENOENT'?404:500),{error:e.status?e.message:e.code==='ENOENT'?'File not found.':'Server error. Please try again.'});else res.end();if(!e.status&&e.code!=='ENOENT')console.error(e);}
 });
 server.requestTimeout=15000;server.headersTimeout=10000;
-server.listen(port,process.env.HOST||'0.0.0.0',()=>console.log(`Rejvi Portfolio: ${origin}\nAdmin: ${origin}/admin`));
+server.listen(port,process.env.HOST||'0.0.0.0',()=>console.log(`Rejvi Portfolio: ${canonicalOrigin}\nAdmin: ${canonicalOrigin}/admin`));
