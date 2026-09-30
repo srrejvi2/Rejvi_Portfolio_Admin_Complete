@@ -1,0 +1,22 @@
+REJVI PORTFOLIO — FREE PERSISTENT STORAGE
+
+1) Create a FREE project at Supabase.
+2) Copy Project URL and server-side Secret key (sb_secret_...).
+3) In Render > Environment add:
+   SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
+   SUPABASE_SECRET_KEY=sb_secret_YOUR_KEY
+
+Keep:
+   APP_ORIGIN=https://srrejvi.com
+   NODE_ENV=production
+
+4) Push this project to GitHub and Deploy latest commit on Render.
+5) First deploy automatically creates storage buckets and migrates old SQLite/uploads if they are still present in the repo.
+6) Test login, upload, permanent delete, then redeploy once to confirm persistence.
+7) Only after migration is confirmed, run:
+   git rm -r --cached data
+   git add .gitignore
+   git commit -m "Move persistent data to Supabase"
+   git push
+
+Full Bangla instructions: SUPABASE-FREE-SETUP-BANGLA.md

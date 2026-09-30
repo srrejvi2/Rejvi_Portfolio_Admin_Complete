@@ -1,8 +1,8 @@
 import http from 'node:http';
-import {readFile,writeFile,mkdir,readdir,stat,unlink} from 'node:fs/promises';
+import {readFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {randomBytes,scryptSync,timingSafeEqual,createHash} from 'node:crypto';
-import {db,root,dataDir,getContent} from './db.mjs';
+import {db,root,dataDir,getContent,flushState,listMedia,saveMedia,removeMedia,remoteStorage} from './db.mjs';
 import {validate,fail} from './validate.mjs';
 import {handleArticles} from './articles.mjs';
 const port=Number(process.env.PORT||3000), production=process.env.NODE_ENV==='production';
@@ -24,7 +24,7 @@ const validEmail=x=>typeof x==='string'&&x.length<255&&/^[^\s@]+@[^\s@]+\.[^\s@]
 function limit(key,max,ms){const now=Date.now();db.prepare('DELETE FROM limits WHERE expires<?').run(now);const r=db.prepare('SELECT * FROM limits WHERE key=?').get(key);if(r&&r.count>=max)fail(429,'Too many attempts. Please try again later.');if(r)db.prepare('UPDATE limits SET count=count+1 WHERE key=?').run(key);else db.prepare('INSERT INTO limits VALUES(?,1,?)').run(key,now+ms);}
 async function body(req){let n=0,chunks=[];for await(const c of req){n+=c.length;if(n>4*1024*1024)fail(413,'Request too large.');chunks.push(c);}try{return JSON.parse(Buffer.concat(chunks).toString());}catch{fail(400,'Invalid JSON.');}}
 const server=http.createServer(async(req,res)=>{
- const send=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
+ const send=(status,data)=>{Promise.resolve(flushState()).then(()=>{if(res.writableEnded)return;res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));}).catch(err=>{console.error(err);if(!res.headersSent){res.writeHead(500,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify({error:'Persistent storage is temporarily unavailable.'}));}else res.end();});};
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
  res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
  if(production)res.setHeader('Strict-Transport-Security','max-age=31536000');
@@ -72,9 +72,9 @@ const server=http.createServer(async(req,res)=>{
  if(path==='/api/admin/history'&&req.method==='GET')return send(200,db.prepare('SELECT id,created FROM content_history ORDER BY id DESC').all());
  const hm=path.match(/^\/api\/admin\/history\/(\d+)$/);if(hm&&req.method==='GET'){const h=db.prepare('SELECT * FROM content_history WHERE id=?').get(+hm[1]);if(!h)fail(404,'Revision not found.');return send(200,JSON.parse(h.json));}
  const mediaInUse=url=>{const contentJson=db.prepare('SELECT json FROM content WHERE id=1').get()?.json||'';if(contentJson.includes(url))return true;return !!db.prepare('SELECT 1 FROM articles WHERE cover=? OR body LIKE ? LIMIT 1').get(url,'%'+url+'%');};
- if(path==='/api/admin/media'&&req.method==='GET'){await mkdir(resolve(dataDir,'uploads'),{recursive:true});const names=await readdir(resolve(dataDir,'uploads'));const files=await Promise.all(names.filter(n=>/^[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(n)).map(async name=>{const f=await stat(resolve(dataDir,'uploads',name)),url='/uploads/'+name;return {name,url,size:f.size,created:f.mtime.toISOString(),inUse:mediaInUse(url)};}));return send(200,files.sort((a,b)=>b.created.localeCompare(a.created)));}
+ if(path==='/api/admin/media'&&req.method==='GET'){const files=(await listMedia()).map(file=>({...file,inUse:mediaInUse(file.url)}));return send(200,files.sort((a,b)=>String(b.created).localeCompare(String(a.created))));}
  const mediaDelete=path.match(/^\/api\/admin\/media\/([a-f0-9]+\.(?:png|jpg|webp|pdf))$/);
- if(mediaDelete&&req.method==='DELETE'){const b=await body(req),name=mediaDelete[1],url='/uploads/'+name,inUse=mediaInUse(url);if(inUse&&!b.force)fail(409,'This file is still used on the website. Remove its reference first, or confirm permanent deletion.');try{await unlink(resolve(dataDir,'uploads',name));}catch(e){if(e.code==='ENOENT')fail(404,'File not found.');throw e;}return send(200,{ok:true,url,inUse});}
+ if(mediaDelete&&req.method==='DELETE'){const b=await body(req),name=mediaDelete[1],file=(await listMedia()).find(x=>x.name===name);if(!file)fail(404,'File not found.');const inUse=mediaInUse(file.url);if(inUse&&!b.force)fail(409,'This file is still used on the website. Remove its reference first, or confirm permanent deletion.');if(!await removeMedia(name))fail(404,'File not found.');return send(200,{ok:true,url:file.url,inUse});}
  if(path==='/api/admin/account'&&req.method==='PUT'){const b=await body(req),a=db.prepare('SELECT * FROM admin WHERE id=1').get();if(!validEmail(b.email)||typeof b.password!=='string'||b.password.length>200)fail(400,'Enter a valid email and your current password.');if(!timingSafeEqual(scryptSync(b.password,a.salt,64),Buffer.from(a.hash,'hex')))fail(400,'Password is incorrect.');db.prepare('UPDATE admin SET email=? WHERE id=1').run(b.email.trim().toLowerCase());return send(200,{ok:true});}
 
  if(path==='/api/admin/messages'&&req.method==='GET')return send(200,db.prepare('SELECT * FROM messages ORDER BY id DESC LIMIT 1000').all());
@@ -90,7 +90,7 @@ const server=http.createServer(async(req,res)=>{
  if(path==='/api/admin/upload'&&req.method==='POST'){
  const b=await body(req);if(typeof b.data!=='string')fail(400,'Missing file.');const buf=Buffer.from(b.data,'base64');if(buf.length>2*1024*1024||buf.length<12)fail(400,'File must be less than 2 MB.');
  let ext='';if(buf.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))ext='png';else if(buf[0]===255&&buf[1]===216&&buf[2]===255)ext='jpg';else if(buf.toString('ascii',0,4)==='RIFF'&&buf.toString('ascii',8,12)==='WEBP')ext='webp';else if(buf.toString('ascii',0,5)==='%PDF-')ext='pdf';else fail(400,'Upload a PNG, JPEG, WebP, or PDF file.');
- await mkdir(resolve(dataDir,'uploads'),{recursive:true});const name=randomBytes(16).toString('hex')+'.'+ext;await writeFile(resolve(dataDir,'uploads',name),buf);return send(201,{url:'/uploads/'+name});
+ const name=randomBytes(16).toString('hex')+'.'+ext,item=await saveMedia(name,buf);return send(201,{url:item.url});
  }
  if(path==='/api/admin/export'&&req.method==='GET')return send(200,{version:2,articles:db.prepare('SELECT * FROM articles').all(),comments:db.prepare('SELECT * FROM comments').all(),reactions:db.prepare('SELECT * FROM reactions').all(),content:getContent(),messages:db.prepare('SELECT * FROM messages ORDER BY id DESC').all(),exportedAt:new Date().toISOString()});
  }
@@ -101,7 +101,7 @@ const server=http.createServer(async(req,res)=>{
  const font={sans:'Inter,Segoe UI,Arial,sans-serif',editorial:'Georgia,Times New Roman,serif',mono:'Consolas,monospace'}[c.font]||'Arial,sans-serif';
  res.writeHead(200,{'Content-Type':'text/css','Cache-Control':'no-cache'});return res.end(`:root{--accent:${accent};--tint:${tint};--radius:${c.corners==='square'?'4px':'20px'};--heading:${font}}`);
  }
- let file;if(/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
+ let file;if(!remoteStorage&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
  const allowed={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/style.css':'style.css','/app.js':'app.js','/admin.js':'admin.js','/favicon.svg':'favicon.svg','/robots.txt':'robots.txt','/schema.js':'schema.js','/shared.js':'shared.js','/admin.css':'admin.css','/fonts/bengali-400.woff2':'fonts/bengali-400.woff2','/fonts/bengali-600.woff2':'fonts/bengali-600.woff2','/fonts/bengali-700.woff2':'fonts/bengali-700.woff2'};
  let selected=allowed[path];let pageTitle='',description='',articleBody='';
  if(!selected){const c=getContent();const pg=c.pages.find(p=>p.visible&&('/'+p.slug)===path);const pr=path.match(/^\/projects\/([\w-]+)$/);const ar=path.match(/^\/articles\/([a-z0-9-]+)$/);

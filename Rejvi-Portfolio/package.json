@@ -1,6 +1,6 @@
 {
   "name": "rejvi-portfolio",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -10,5 +10,8 @@
     "start": "node --env-file-if-exists=.env server.mjs",
     "setup": "node --env-file-if-exists=.env scripts/setup.mjs",
     "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
   }
 }

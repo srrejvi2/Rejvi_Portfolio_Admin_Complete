@@ -1,4 +1,6 @@
-data/
 .env
+.env.local
 node_modules/
+data/
 *.log
+.DS_Store

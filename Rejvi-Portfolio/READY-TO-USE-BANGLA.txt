@@ -1,0 +1,30 @@
+Rejvi Portfolio — Ready to Use
+
+এই build-এ Supabase production configuration .env file-এ আগে থেকেই বসানো আছে।
+.env GitHub-এ push হবে না, কারণ .gitignore-এ এটি ignore করা আছে।
+
+Render > Environment-এ নিশ্চিত করুন:
+APP_ORIGIN=https://srrejvi.com
+NODE_ENV=production
+TRUST_PROXY=1
+SUPABASE_URL=<your Supabase project URL>
+SUPABASE_SECRET_KEY=<your server secret key>
+SUPABASE_STATE_BUCKET=rejvi-state
+SUPABASE_MEDIA_BUCKET=rejvi-media
+
+তারপর existing GitHub project folder-এর উপর files replace করে:
+
+git status
+git add .
+git commit -m "Enable free persistent Supabase storage"
+git push origin main
+
+Render deploy শেষ হলে:
+https://srrejvi.com
+https://srrejvi.com/admin
+
+প্রথমবার login/admin setup দরকার হলে project folder-এ চালান:
+npm install
+npm run setup
+
+নিরাপত্তা: secret key কখনও GitHub/স্ক্রিনশট/public জায়গায় দেবেন না।
