@@ -1,0 +1,24 @@
+REJVI PORTFOLIO STUDIO — VERSION 2
+
+ALREADY USING VERSION 1?
+Read UPGRADE-BANGLA.md first. Stop the old server, back up,
+and COPY your old data folder into this new project folder.
+Your existing login, content, messages and uploads are preserved.
+Do not run setup again unless you want to reset your admin account.
+
+START:
+1. Open this project folder in File Explorer.
+2. Type cmd in the address bar and press Enter.
+3. Run: npm start
+4. Keep the terminal open.
+5. Website: http://localhost:3000
+6. Admin: http://localhost:3000/admin
+
+FIRST INSTALL ONLY:
+Install Node.js 24+ from https://nodejs.org
+Run: npm run setup
+Choose email + password (hidden) + confirm password.
+Then run: npm start
+
+No npm install, API key or external database is needed.
+Windows .bat shortcuts are optional; CMD commands work without them.

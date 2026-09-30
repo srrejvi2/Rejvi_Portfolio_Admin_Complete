@@ -1,0 +1,97 @@
+{
+  "profile": {
+    "name": "Samiur Rahaman Rejvi",
+    "shortName": "Rejvi",
+    "role": "Full-stack developer & AI automation builder",
+    "headline": "Thoughtful code.\nReal-world possibilities.",
+    "intro": "I’m Rejvi, a Computer Science student in Kuala Lumpur. I build full-stack web applications and AI workflows that turn complex ideas into useful experiences.",
+    "about": "I enjoy connecting software engineering with practical problem solving—from social platforms and automated assistants to spreadsheets that make everyday work easier. My approach is curious, analytical, and grounded in how people actually use technology.",
+    "location": "Kuala Lumpur, Malaysia",
+    "availability": "Open to conversations about software & AI opportunities",
+    "email": "",
+    "github": "",
+    "linkedin": "",
+    "photo": "",
+    "resume": "",
+    "internship": "Industrial training concludes on November 20, 2026.",
+    "languages": "Bengali · Native\nEnglish · Professional\nHindi · Speaking & listening\nUrdu · Listening",
+    "recognition": "Dean’s Award",
+    "awardYears": "2023 & 2025"
+  },
+  "projects": [
+    {
+      "id": "linkverse",
+      "title": "LinkVerse",
+      "category": "Full-stack development",
+      "date": "April 2026",
+      "description": "A web super-app prototype bringing social networking, messaging, a digital wallet interface, and e-commerce into one experience.",
+      "stack": "Node.js, Express, SQLite, JavaScript",
+      "url": "",
+      "github": "",
+      "image": "",
+      "published": true
+    },
+    {
+      "id": "brishti",
+      "title": "Brishti / বৃষ্টি",
+      "category": "AI & automation",
+      "date": "September 2026",
+      "description": "A custom Telegram AI assistant connecting webhook endpoints with large language models to support automated conversations.",
+      "stack": "LLM APIs, Webhooks, Telegram, Automation",
+      "url": "",
+      "github": "",
+      "image": "",
+      "published": true
+    },
+    {
+      "id": "portfolio",
+      "title": "Personal portfolio",
+      "category": "Web development",
+      "date": "June 2026",
+      "description": "A responsive professional portfolio website, deployed and hosted on Render to bring my work and technical background together.",
+      "stack": "HTML, CSS, JavaScript, Render",
+      "url": "",
+      "github": "",
+      "image": "",
+      "published": true
+    }
+  ],
+  "skills": [
+    {
+      "title": "Build",
+      "items": "JavaScript (ES6+), Node.js, Express, React, Python, Java, HTML, CSS"
+    },
+    {
+      "title": "Store & deploy",
+      "items": "SQLite, Firebase Authentication, Firestore, Firebase Storage, Cloudinary, Git, GitHub, Render"
+    },
+    {
+      "title": "Automate",
+      "items": "Google AI Studio, Gemini API, Groq, n8n, CrewAI, LangGraph, Custom Webhooks, UptimeRobot, cron-job.org"
+    },
+    {
+      "title": "Analyze",
+      "items": "Google Sheets, Microsoft Excel, Transaction tracking, Commission formulas"
+    }
+  ],
+  "education": [
+    {
+      "title": "Bachelor of Computer Science",
+      "institution": "Universiti Geomatika Malaysia",
+      "period": "Ongoing",
+      "detail": "Dean’s Award recipient in 2023 and 2025."
+    },
+    {
+      "title": "Higher Secondary Certificate",
+      "institution": "Pabna Islamia Degree College",
+      "period": "2022",
+      "detail": "Higher secondary education."
+    },
+    {
+      "title": "Secondary School Certificate",
+      "institution": "Jagir Hossain Academy Pabna",
+      "period": "2020",
+      "detail": "Secondary education."
+    }
+  ]
+}

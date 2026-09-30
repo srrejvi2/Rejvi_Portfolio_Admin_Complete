@@ -1,0 +1,14 @@
+services:
+  portfolio:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+      APP_ORIGIN: ${APP_ORIGIN:?Set APP_ORIGIN to your HTTPS domain in .env}
+      DATA_DIR: /app/data
+    volumes:
+      - portfolio-data:/app/data
+volumes:
+  portfolio-data:
