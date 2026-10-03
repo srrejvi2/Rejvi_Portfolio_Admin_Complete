@@ -1,5 +1,5 @@
 export const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const safeURL=s=>/^https:\/\//.test(s||'')||/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(s||'')||/^\/article-media\/[a-z0-9-]+\.(png|jpg|webp)$/.test(s||'');
+export const safeURL=s=>/^https:\/\//.test(s||'')||/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(s||'')||/^\/article-media\/[a-z0-9-]+\.(png|jpg|webp)$/.test(s||'')||/^\/documents\/[a-zA-Z0-9_.-]+\.pdf$/.test(s||'');
 export const external=(url,label,cls='text-link')=>safeURL(url)?`<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)} <span aria-hidden="true">↗</span></a>`:'';
 export function markdown(source=''){
  // A deliberately small, escaped Markdown renderer: no HTML or arbitrary embeds.

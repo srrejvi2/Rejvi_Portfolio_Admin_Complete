@@ -1,0 +1,7 @@
+এই build-এ যা যোগ হয়েছে:
+- Professional CV: public/documents/Samiur_Rahaman_Rejvi_Professional_CV.pdf
+- Website Resume button এখন ওই PDF খুলবে/ডাউনলোড করবে।
+- GitHub, LinkedIn, WhatsApp, Facebook, Instagram, X এবং Portfolio link update করা হয়েছে।
+- Email, phone, contact hours, preferred contact method, work preference/location এবং opportunity status Contact page-এ দেখাবে।
+- Existing Supabase data থাকলেও contact-v1 migration public/admin content-এ নতুন contact values দেখাবে।
+- Personal profile-এর অন্য তথ্য ইচ্ছাকৃতভাবে পরিবর্তন করা হয়নি; সেগুলো পরের ধাপে update করা যাবে।

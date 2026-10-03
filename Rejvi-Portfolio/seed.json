@@ -8,15 +8,23 @@
     "about": "I enjoy connecting software engineering with practical problem solving—from social platforms and automated assistants to spreadsheets that make everyday work easier. My approach is curious, analytical, and grounded in how people actually use technology.",
     "location": "Kuala Lumpur, Malaysia",
     "availability": "Open to conversations about software & AI opportunities",
-    "email": "",
-    "github": "",
-    "linkedin": "",
+    "email": "samiurrahamanrejvi@gmail.com",
+    "github": "https://github.com/srrejvi2",
+    "linkedin": "https://www.linkedin.com/in/samiur-rahaman-rejvi-43a08a418/",
     "photo": "",
-    "resume": "",
+    "resume": "/documents/Samiur_Rahaman_Rejvi_Professional_CV.pdf",
     "internship": "Industrial training concludes on November 20, 2026.",
     "languages": "Bengali · Native\nEnglish · Professional\nHindi · Speaking & listening\nUrdu · Listening",
     "recognition": "Dean’s Award",
-    "awardYears": "2023 & 2025"
+    "awardYears": "2023 & 2025",
+    "phone": "+601136121380",
+    "timezone": "Asia/Kuala_Lumpur",
+    "preferredContact": "Email & WhatsApp",
+    "contactHours": "9:00 AM - 6:00 PM (MYT / Malaysia Time)",
+    "workPreference": "Any",
+    "workLocations": "Malaysia, Bangladesh, & Remote (Global)",
+    "opportunities": "Freelance · Full-time · Part-time · Remote · Collaboration · Research collaboration",
+    "contactVersion": "contact-v1"
   },
   "projects": [
     {
@@ -93,5 +101,29 @@
       "period": "2020",
       "detail": "Secondary education."
     }
-  ]
+  ],
+  "site": {
+    "socials": [
+      {
+        "label": "WhatsApp",
+        "url": "https://wa.me/601136121380"
+      },
+      {
+        "label": "Facebook",
+        "url": "https://www.facebook.com/srrejvi2002/"
+      },
+      {
+        "label": "Instagram",
+        "url": "https://www.instagram.com/srrejvi2002/"
+      },
+      {
+        "label": "X",
+        "url": "https://x.com/samiur2002"
+      },
+      {
+        "label": "Portfolio",
+        "url": "https://www.srrejvi.com"
+      }
+    ]
+  }
 }
