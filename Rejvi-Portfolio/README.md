@@ -177,3 +177,12 @@ Runtime/deployment references:
 - Footer now uses the SR_Rejvi wordmark.
 - Loader and favicon use the SR_Rejvi asset.
 - Admin login and sidebar use coordinated SR_Rejvi branding.
+
+
+## October experience update
+- 25 professional FAQs are automatically seeded into existing portfolios if missing.
+- Primary logo upload now controls the public website, admin studio, and favicon in one action.
+- Loading-screen logo has its own upload control in Appearance.
+- The supplied SR_Rejvi artwork is the new built-in fallback logo; old hardcoded logo usage was removed.
+- The public header always shows the profile name beside the logo.
+- Pet interaction now includes synthesized character sounds, 1,000+ generated messages, and a five-second page-wide run after rapid clicks.

@@ -1,0 +1,20 @@
+Rejvi Portfolio Update — 2026-10-04
+
+এই build-এ যোগ করা হয়েছে:
+1. 25টি professional FAQ auto-seed.
+2. Supplied SR_Rejvi logo is the new built-in/default logo.
+3. Appearance > Primary logo — একবার upload করলে public website + admin studio + favicon একই logo ব্যবহার করবে.
+4. Appearance > Loading-screen logo — আলাদা করে loader logo upload/choose/URL দেওয়া যাবে.
+5. Public header-এ logo-এর পাশে profile name সবসময় visible থাকবে.
+6. Existing/old hardcoded logo references removed/replaced by the new brand system.
+7. Pet click করলে pet type অনুযায়ী synthesized sound play করবে.
+8. Pet-এর built-in 14,000+ generated playful message combinations আছে; প্রতিটি click-এ random message দেখাবে.
+9. 1.9 seconds-এর মধ্যে 4 বার click করলে 5-second page-wide pet rush animation হবে.
+10. Existing theme, translation, event system, Supabase persistence, permanent media delete এবং 30-minute admin inactivity timeout রাখা হয়েছে.
+
+Deploy:
+- Existing Rejvi-Portfolio folder-এর উপর এই ZIP-এর Rejvi-Portfolio files Replace করুন.
+- git add .
+- git commit -m "Add FAQ branding and interactive pet update"
+- git push origin main
+- Render deploy complete হওয়ার পরে hard refresh দিন.

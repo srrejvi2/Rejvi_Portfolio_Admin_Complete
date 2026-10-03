@@ -122,7 +122,7 @@ html[data-visitor-theme="light"]{color-scheme:light;--bg:#ffffff;--ink:#182034;-
   res.writeHead(200,{'Content-Type':'text/css','Cache-Control':'no-cache'});return res.end(css);
  }
  let file;if(!remoteStorage&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
- const allowed={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/style.css':'style.css','/app.js':'app.js','/admin.js':'admin.js','/favicon.svg':'favicon.svg','/robots.txt':'robots.txt','/schema.js':'schema.js','/shared.js':'shared.js','/admin.css':'admin.css','/sw.js':'sw.js','/fonts/bengali-400.woff2':'fonts/bengali-400.woff2','/fonts/bengali-600.woff2':'fonts/bengali-600.woff2','/fonts/bengali-700.woff2':'fonts/bengali-700.woff2'};
+ const allowed={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/style.css':'style.css','/app.js':'app.js','/admin.js':'admin.js','/favicon.png':'favicon.png','/brand/SR_Rejvi_logo.png':'brand/SR_Rejvi_logo.png','/robots.txt':'robots.txt','/schema.js':'schema.js','/shared.js':'shared.js','/admin.css':'admin.css','/sw.js':'sw.js','/fonts/bengali-400.woff2':'fonts/bengali-400.woff2','/fonts/bengali-600.woff2':'fonts/bengali-600.woff2','/fonts/bengali-700.woff2':'fonts/bengali-700.woff2'};
  let selected=allowed[path];let pageTitle='',description='',articleBody='';
  if(!selected){const c=getContent();const pg=c.pages.find(p=>p.visible&&('/'+p.slug)===path);const pr=path.match(/^\/projects\/([\w-]+)$/);const ar=path.match(/^\/articles\/([a-z0-9-]+)$/);
  if(pg){selected='index.html';pageTitle=pg.title||pg.label;description=pg.subtitle;}
@@ -133,7 +133,7 @@ html[data-visitor-theme="light"]{color-scheme:light;--bg:#ffffff;--ink:#182034;-
  }
  if(selected==='index.html'){
  const c=getContent(),escape=v=>String(v||'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
- let html=await readFile(resolve(root,'public',selected),'utf8');html=html.replace('<!--TITLE-->',escape(pageTitle?pageTitle+' — '+c.profile.name:c.site.title)).replace('<!--DESCRIPTION-->',escape(description||c.site.description));
+ let html=await readFile(resolve(root,'public',selected),'utf8');const brandLogo=c.site.logo||'/brand/SR_Rejvi_logo.png',loaderLogo=c.site.loaderLogo||brandLogo,siteIcon=c.site.favicon||brandLogo||'/favicon.png';html=html.replace('<!--TITLE-->',escape(pageTitle?pageTitle+' — '+c.profile.name:c.site.title)).replace('<!--DESCRIPTION-->',escape(description||c.site.description)).replace('<!--LOADER_LOGO-->',escape(loaderLogo)).replace('<!--FAVICON-->',escape(siteIcon));
  if(articleBody)html=html.replace('<!--ARTICLE_FALLBACK-->','<noscript><article><h1>'+escape(pageTitle)+'</h1><p>'+escape(articleBody).replace(/\n/g,'<br>')+'</p></article></noscript>');
  res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','no-cache');return res.end(req.method==='HEAD'?undefined:html);
  }

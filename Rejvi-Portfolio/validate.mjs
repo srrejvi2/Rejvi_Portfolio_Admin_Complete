@@ -4,10 +4,10 @@ import {profileFields,collections} from './public/schema.js';
 export const fail=(status,message)=>{throw Object.assign(Error(message),{status});};
 export const str=(v,max=10000)=>{if(typeof v!=='string'||v.length>max)fail(400,'Text is missing or too long.');return v.trim();};
 export const email=v=>typeof v==='string'&&v.length<255&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-export const url=(v,asset=false)=>{v=str(v??'',2048);if(v&&!(asset&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(v))){try{if(new URL(v).protocol!=='https:')throw Error();}catch{fail(400,'Use an HTTPS link or an uploaded asset.');}}return v;};
+export const url=(v,asset=false)=>{v=str(v??'',2048);const localAsset=asset&&(/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(v)||/^\/brand\/[a-zA-Z0-9_.-]+\.(png|jpg|webp)$/.test(v)||v==='/favicon.png');if(v&&!localAsset){try{if(new URL(v).protocol!=='https:')throw Error();}catch{fail(400,'Use an HTTPS link or an uploaded asset.');}}return v;};
 const arr=(x,max=200)=>{if(!Array.isArray(x)||x.length>max)fail(400,`Expected a list with at most ${max} entries.`);return x;};
 const record=x=>{if(!x||typeof x!=='object'||Array.isArray(x))fail(400,'Invalid record.');return x;};
-function valField(f,v){if(['url','github','linkedin'].includes(f))return url(v);if(['photo','resume','image','logo','favicon'].includes(f))return url(v,true);if(f==='gallery')return str(v).split('\n').filter(Boolean).map(x=>url(x,true)).join('\n');return str(v??'');}
+function valField(f,v){if(['url','github','linkedin'].includes(f))return url(v);if(['photo','resume','image','logo','loaderLogo','favicon'].includes(f))return url(v,true);if(f==='gallery')return str(v).split('\n').filter(Boolean).map(x=>url(x,true)).join('\n');return str(v??'');}
 export function validate(data){record(data);record(data.profile);record(data.site);record(data.copy);const c={profile:{},site:{},copy:{},pages:[],sections:[]};
 for(const f of Object.keys(profileFields))c.profile[f]=valField(f,data.profile[f]);
 if(!c.profile.name||!c.profile.headline)fail(400,'Profile name and headline are required.');if(c.profile.email&&!email(c.profile.email))fail(400,'Invalid public email.');
