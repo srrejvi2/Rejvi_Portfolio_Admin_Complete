@@ -1,5 +1,5 @@
 export const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const safeURL=s=>/^https:\/\//.test(s||'')||/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(s||'');
+export const safeURL=s=>/^https:\/\//.test(s||'')||/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(s||'')||/^\/article-media\/[a-z0-9-]+\.(png|jpg|webp)$/.test(s||'');
 export const external=(url,label,cls='text-link')=>safeURL(url)?`<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)} <span aria-hidden="true">↗</span></a>`:'';
 export function markdown(source=''){
  // A deliberately small, escaped Markdown renderer: no HTML or arbitrary embeds.
@@ -8,6 +8,7 @@ export function markdown(source=''){
  for(const line of source.split('\n')){
  if(line.startsWith('```')){if(list){out+='</ul>';list=false;}if(code){out+='<pre><code>'+esc(buffer.join('\n'))+'</code></pre>';buffer=[];}code=!code;continue;}
  if(code){buffer.push(line);continue;}
+ const image=line.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);if(image&&safeURL(image[2])){if(list){out+='</ul>';list=false;}out+=`<figure class="article-inline-media"><img src="${esc(image[2])}" alt="${esc(image[1])}" loading="lazy"><figcaption>${esc(image[1])}</figcaption></figure>`;continue;}
  const li=line.match(/^[-*] (.*)/);if(li){if(!list){out+='<ul>';list=true;}out+='<li>'+inline(li[1])+'</li>';continue;}if(list){out+='</ul>';list=false;}
  const h=line.match(/^(#{1,3}) (.*)/);if(h){const n=Math.min(h[1].length+1,4);out+=`<h${n}>${inline(h[2])}</h${n}>`;}
  else if(line.startsWith('> '))out+='<blockquote>'+inline(line.slice(2))+'</blockquote>';

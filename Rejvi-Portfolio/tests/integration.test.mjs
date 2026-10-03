@@ -22,6 +22,9 @@ test('portfolio security, content, inbox, upload and persistence',async()=>{try{
  const edited=structuredClone(original);edited.profile.name='Saved Test';edited.projects[0].published=false;edited.site.theme='midnight';edited.site.font='rounded';edited.site.petType='fox';edited.site.petInterval='30';edited.events=[{id:'event-test',title:'Test celebration',message:'Hello visitors',start:'2026-10-01',end:'2026-10-02',emoji:'✨',style:'celebration',enabled:true,annual:false}];
  const saved=await req('/api/admin/content','PUT',edited);assert.equal(saved.status,200,JSON.stringify(saved.body));edited._revision=saved.body.revision;assert.equal((await req('/api/admin/content','PUT',original)).status,409);
  const pub=(await req('/api/content')).body;assert.equal(pub.profile.name,'Saved Test');assert.equal(pub.projects.length,2);assert.equal(pub.site.theme,'midnight');assert.equal(pub.site.petType,'fox');assert.equal(pub.events[0].title,'Test celebration');
+ assert.equal((await req('/api/subscribe','POST',{email:'reader@example.com'},false)).status,201);assert.equal((await req('/api/admin/subscribers')).body.length,1);const analytics0=(await req('/api/admin/analytics')).body;assert.equal(analytics0.subscribers,1);
+ const visit=await req('/api/visit','POST',{},false);assert.equal(visit.status,201);assert.ok(visit.cookie?.includes('sitevisitor='));const analytics1=(await req('/api/admin/analytics')).body;assert.equal(analytics1.uniqueVisitors,1);assert.equal(analytics1.totalVisits,1);
+ assert.equal((await fetch(origin+'/article-media/quiet-layer-ai-knows-when-not-to-answer-cover.png')).status,200);
  edited.profile.github='javascript:alert(1)';assert.equal((await req('/api/admin/content','PUT',edited)).status,400);
  assert.equal((await req('/api/contact','POST',{name:'Visitor',email:'visitor@example.com',message:'A valid test conversation.'},false)).status,201);
  const messages=(await req('/api/admin/messages')).body;assert.equal(messages.length,1);
@@ -40,7 +43,7 @@ test('portfolio security, content, inbox, upload and persistence',async()=>{try{
  assert.equal((await req('/api/articles/test-article')).status,404);
  assert.equal((await fetch(origin+'/articles/test-article')).status,404);
  const published=await req('/api/admin/articles/'+created.body.id,'PUT',{...created.body,status:'published'});assert.equal(published.status,200);
- assert.equal((await req('/api/articles')).body.length,1);assert.equal((await fetch(origin+'/articles/test-article')).status,200);
+ assert.equal((await req('/api/articles')).body.length,21);assert.equal((await fetch(origin+'/articles/test-article')).status,200);
  const cmt=await req('/api/articles/test-article/comments','POST',{name:'Reader',email:'private@example.com',body:'A useful comment.'},false);assert.equal(cmt.status,201);
  assert.equal((await req('/api/articles/test-article/comments')).body.length,0);
  const comments=(await req('/api/admin/comments')).body;assert.equal(comments[0].email,'private@example.com');

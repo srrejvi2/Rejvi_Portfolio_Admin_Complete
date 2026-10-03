@@ -4,6 +4,7 @@ import {mkdirSync,readFileSync,existsSync,readdirSync,statSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {randomBytes} from 'node:crypto';
+import {bundledArticles} from './article-seed.mjs';
 
 export const root=dirname(fileURLToPath(import.meta.url));
 export const dataDir=resolve(process.env.DATA_DIR||resolve(root,'data'));
@@ -29,20 +30,20 @@ const nowIso=()=>new Date().toISOString();
 
 function emptyState(){
  return {
-  version:3,
+  version:4,
   content:readFileSync(resolve(root,'seed.json'),'utf8'),
   admin:null,
   sessions:[],messages:[],limits:[],articles:[],comments:[],reactions:[],content_history:[],
-  settings:{},media:[]
+  settings:{},media:[],subscribers:[],visitors:[]
  };
 }
 
 function ensureShape(s){
  const base=emptyState(),out={...base,...(s||{})};
- for(const k of ['sessions','messages','limits','articles','comments','reactions','content_history','media'])if(!Array.isArray(out[k]))out[k]=[];
+ for(const k of ['sessions','messages','limits','articles','comments','reactions','content_history','media','subscribers','visitors'])if(!Array.isArray(out[k]))out[k]=[];
  if(!out.settings||typeof out.settings!=='object'||Array.isArray(out.settings))out.settings={};
  if(typeof out.content!=='string')out.content=JSON.stringify(out.content||JSON.parse(base.content));
- out.version=3;
+ out.version=4;
  return out;
 }
 
@@ -264,9 +265,51 @@ CREATE INDEX IF NOT EXISTS idx_comments_article_status ON comments(article_id,st
 CREATE TABLE IF NOT EXISTS reactions (article_id INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE, visitor TEXT NOT NULL, kind TEXT NOT NULL CHECK(kind IN ('like','insightful','love')), PRIMARY KEY(article_id,visitor));
 CREATE TABLE IF NOT EXISTS content_history (id INTEGER PRIMARY KEY, json TEXT NOT NULL, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS subscribers (id INTEGER PRIMARY KEY, email TEXT NOT NULL UNIQUE, status TEXT NOT NULL DEFAULT 'active', created TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS visitors (visitor TEXT PRIMARY KEY, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, visits INTEGER NOT NULL DEFAULT 1);
 `);
  local.flush=async()=>{};local.remote=false;db=local;
 }
 
 
 export const getContent=()=>upgrade(JSON.parse(db.prepare('SELECT json FROM content WHERE id=1').get().json));
+
+
+export function recordVisit(visitor){
+ const now=nowIso(),key=String(visitor||'').slice(0,128);if(!key)return;
+ if(remoteStorage){
+  const row=state.visitors.find(x=>x.visitor===key);
+  if(row){row.last_seen=now;row.visits=Number(row.visits||0)+1;}else state.visitors.push({visitor:key,first_seen:now,last_seen:now,visits:1});
+  markDirty();return;
+ }
+ const row=db.prepare('SELECT * FROM visitors WHERE visitor=?').get(key);
+ if(row)db.prepare('UPDATE visitors SET last_seen=?,visits=visits+1 WHERE visitor=?').run(now,key);
+ else db.prepare('INSERT INTO visitors(visitor,first_seen,last_seen,visits) VALUES(?,?,?,1)').run(key,now,now);
+}
+export function addSubscriber(email){
+ const value=String(email||'').trim().toLowerCase(),now=nowIso();if(!value)return false;
+ if(remoteStorage){const old=state.subscribers.find(x=>x.email===value);if(old){old.status='active';return false;}state.subscribers.push({id:nextId(state.subscribers),email:value,status:'active',created:now});markDirty();return true;}
+ try{db.prepare("INSERT INTO subscribers(email,status,created) VALUES(?,'active',?)").run(value,now);return true;}catch{return false;}
+}
+export function removeSubscriber(id){
+ const n=Number(id);if(remoteStorage){const before=state.subscribers.length;state.subscribers=state.subscribers.filter(x=>Number(x.id)!==n);if(before!==state.subscribers.length)markDirty();return before!==state.subscribers.length;}
+ return db.prepare('DELETE FROM subscribers WHERE id=?').run(n).changes>0;
+}
+export function listSubscribers(){
+ if(remoteStorage)return clone([...state.subscribers].sort((a,b)=>String(b.created).localeCompare(String(a.created))));
+ return db.prepare('SELECT * FROM subscribers ORDER BY id DESC').all();
+}
+export function analyticsSummary(){
+ let visitors,subscribers;
+ if(remoteStorage){visitors=state.visitors;subscribers=state.subscribers;}else{visitors=db.prepare('SELECT * FROM visitors').all();subscribers=db.prepare('SELECT * FROM subscribers').all();}
+ return {uniqueVisitors:visitors.length,totalVisits:visitors.reduce((n,x)=>n+Number(x.visits||0),0),subscribers:subscribers.filter(x=>x.status!=='removed').length};
+}
+async function seedBundledArticles(){
+ if(db.prepare('SELECT value FROM settings WHERE key=?').get('bundled-articles-v1')?.value==='done')return;
+ const existing=new Set(db.prepare('SELECT * FROM articles').all().map(x=>x.slug));
+ const sql='INSERT INTO articles(slug,title,excerpt,body,category,tags,cover,status,comments,created,updated,published_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)';
+ for(const a of bundledArticles){if(existing.has(a.slug))continue;db.prepare(sql).run(a.slug,a.title,a.excerpt,a.body,a.category,a.tags,a.cover,'published',1,a.created,a.updated,a.published_at);}
+ db.prepare('INSERT OR IGNORE INTO settings VALUES(?,?)').run('bundled-articles-v1','done');
+ await flushState();
+}
+await seedBundledArticles();

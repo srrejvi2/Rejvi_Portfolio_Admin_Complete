@@ -1,0 +1,22 @@
+20 bundled essays
+
+01. The Quiet Layer: Designing AI Systems That Know When Not to Answer
+02. Software That Remembers Without Spying: A Privacy-First Memory Architecture
+03. The Latency Budget of Trust: Why Fast AI Feels Smarter—and When It Should Slow Down
+04. Interfaces for Uncertainty: Designing AI Confidence Without Turning the UI Into a Dashboard
+05. Offline-First AI: What Changes When Intelligence Lives on the Device
+06. The Shadow API Problem: When Automation Depends on Interfaces Never Meant for Machines
+07. Eventful Software: Designing Applications That Change Character for Human Moments
+08. The Three Clocks of Modern Apps: User Time, Server Time, and Model Time
+09. Human-in-the-Loop Is Not a Button: Designing Real Control Into Automation
+10. The Cost of Convenience: Technical Debt Created by One-Click AI Features
+11. Synthetic Teammates: Designing Agents That Coordinate Without Pretending to Be People
+12. The Small Model Renaissance: Why Specialized Models Can Win in Real Products
+13. Data That Expires Gracefully: Building Systems With Planned Forgetting
+14. The Browser as an Operating System for Personal AI
+15. Failure-Friendly AI: Designing Recovery Paths Before You Design Prompts
+16. The Invisible UX of Permissions: How Trust Is Lost Before a Feature Even Starts
+17. Software With a Pulse: Why Motion, Sound, and Micro-Behavior Change Perceived Intelligence
+18. The Local–Cloud Negotiation: Choosing Where Computation Belongs at Runtime
+19. Prompting as Interface Design: Why Good Prompts Are Really Product Architecture
+20. Beyond Chat: The Next Useful Shape of AI Interfaces

@@ -14,3 +14,6 @@
 @media(max-width:700px){.studio-brand-logo{width:68px;height:32px}.admin-login-brand img{width:min(220px,80%)}}
 
 .brand-lock-note{margin-top:-5px}.brand-lock-note strong:last-child{color:var(--ink)}
+
+/* Analytics, subscriber, and article-media editor additions */
+.analytics-stats{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}.subscriber-row .article-placeholder{display:grid;place-items:center;font-size:1.35rem}.format-upload{display:inline-flex!important;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:var(--surface);font-size:.78rem;font-weight:600;cursor:pointer}.format-upload input{display:none}.format-upload:hover{border-color:var(--accent);color:var(--accent)}

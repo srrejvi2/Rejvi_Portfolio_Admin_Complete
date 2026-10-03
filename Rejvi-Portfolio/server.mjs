@@ -2,7 +2,7 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {randomBytes,scryptSync,timingSafeEqual,createHash} from 'node:crypto';
-import {db,root,dataDir,getContent,flushState,listMedia,saveMedia,removeMedia,remoteStorage} from './db.mjs';
+import {db,root,dataDir,getContent,flushState,listMedia,saveMedia,removeMedia,remoteStorage,recordVisit,addSubscriber,removeSubscriber,listSubscribers,analyticsSummary} from './db.mjs';
 import {validate,fail} from './validate.mjs';
 import {handleArticles} from './articles.mjs';
 const port=Number(process.env.PORT||3000), production=process.env.NODE_ENV==='production';
@@ -44,6 +44,8 @@ const server=http.createServer(async(req,res)=>{
  const ip=process.env.TRUST_PROXY==='1'?String(req.headers['x-forwarded-for']||req.socket.remoteAddress).split(',').at(-1).trim():req.socket.remoteAddress;
  if(path==='/api/health'&&req.method==='GET')return send(200,{ok:true});
  if(path==='/api/content'&&req.method==='GET'){const c=getContent();c.projects=c.projects.filter(p=>p.published);c.pages=c.pages.filter(p=>p.visible);return send(200,c);}
+ if(path==='/api/visit'&&req.method==='POST'){limit('visit:'+ip,180,3600e3);let id=(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('sitevisitor='))?.slice(12)||'';if(!/^[a-f0-9]{48}$/.test(id)){id=randomBytes(24).toString('hex');res.setHeader('Set-Cookie',`sitevisitor=${id}; HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000${production?'; Secure':''}`);}recordVisit(digest(id));return send(201,{ok:true});}
+ if(path==='/api/subscribe'&&req.method==='POST'){limit('subscribe:'+ip,10,3600e3);const b=await body(req);if(!validEmail(b.email))fail(400,'Enter a valid email address.');addSubscriber(b.email);return send(201,{ok:true});}
  if(await handleArticles({path,req,res,body,send,auth,limit,ip,production}))return;
  if(path==='/api/login'&&req.method==='POST'){
  limit('login:'+ip,10,15*60e3);limit('login:global',200,15*60e3);
@@ -71,6 +73,9 @@ const server=http.createServer(async(req,res)=>{
  const c=validate(b),json=JSON.stringify(c);db.exec('BEGIN IMMEDIATE');try{db.prepare('INSERT INTO content_history(json,created) VALUES(?,?)').run(old,new Date().toISOString());db.prepare('UPDATE content SET json=? WHERE id=1').run(json);db.exec('DELETE FROM content_history WHERE id NOT IN (SELECT id FROM content_history ORDER BY id DESC LIMIT 20); COMMIT');}catch(e){db.exec('ROLLBACK');throw e;}return send(200,{ok:true,revision:digest(json)});
  }
  if(path==='/api/admin/history'&&req.method==='GET')return send(200,db.prepare('SELECT id,created FROM content_history ORDER BY id DESC').all());
+ if(path==='/api/admin/analytics'&&req.method==='GET')return send(200,analyticsSummary());
+ if(path==='/api/admin/subscribers'&&req.method==='GET')return send(200,listSubscribers());
+ const subm=path.match(/^\/api\/admin\/subscribers\/(\d+)$/);if(subm&&req.method==='DELETE'){if(!removeSubscriber(Number(subm[1])))fail(404,'Subscriber not found.');return send(200,{ok:true});}
  const hm=path.match(/^\/api\/admin\/history\/(\d+)$/);if(hm&&req.method==='GET'){const h=db.prepare('SELECT * FROM content_history WHERE id=?').get(+hm[1]);if(!h)fail(404,'Revision not found.');return send(200,JSON.parse(h.json));}
  const mediaInUse=url=>{const contentJson=db.prepare('SELECT json FROM content WHERE id=1').get()?.json||'';if(contentJson.includes(url))return true;return !!db.prepare('SELECT 1 FROM articles WHERE cover=? OR body LIKE ? LIMIT 1').get(url,'%'+url+'%');};
  if(path==='/api/admin/media'&&req.method==='GET'){const files=(await listMedia()).map(file=>({...file,inUse:mediaInUse(file.url)}));return send(200,files.sort((a,b)=>String(b.created).localeCompare(String(a.created))));}
@@ -93,7 +98,7 @@ const server=http.createServer(async(req,res)=>{
  let ext='';if(buf.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10])))ext='png';else if(buf[0]===255&&buf[1]===216&&buf[2]===255)ext='jpg';else if(buf.toString('ascii',0,4)==='RIFF'&&buf.toString('ascii',8,12)==='WEBP')ext='webp';else if(buf.toString('ascii',0,5)==='%PDF-')ext='pdf';else fail(400,'Upload a PNG, JPEG, WebP, or PDF file.');
  const name=randomBytes(16).toString('hex')+'.'+ext,item=await saveMedia(name,buf);return send(201,{url:item.url});
  }
- if(path==='/api/admin/export'&&req.method==='GET')return send(200,{version:2,articles:db.prepare('SELECT * FROM articles').all(),comments:db.prepare('SELECT * FROM comments').all(),reactions:db.prepare('SELECT * FROM reactions').all(),content:getContent(),messages:db.prepare('SELECT * FROM messages ORDER BY id DESC').all(),exportedAt:new Date().toISOString()});
+ if(path==='/api/admin/export'&&req.method==='GET')return send(200,{version:3,articles:db.prepare('SELECT * FROM articles').all(),comments:db.prepare('SELECT * FROM comments').all(),reactions:db.prepare('SELECT * FROM reactions').all(),content:getContent(),messages:db.prepare('SELECT * FROM messages ORDER BY id DESC').all(),subscribers:listSubscribers(),analytics:analyticsSummary(),exportedAt:new Date().toISOString()});
  }
  if(path.startsWith('/api/'))fail(404,'Endpoint not found.');
  if(!['GET','HEAD'].includes(req.method))fail(405,'Method not allowed.');
@@ -121,7 +126,7 @@ html[data-visitor-theme="dark"]{color-scheme:dark;--bg:#0b1220;--ink:#f5f7fb;--m
 html[data-visitor-theme="light"]{color-scheme:light;--bg:#ffffff;--ink:#182034;--muted:#667086;--line:#e5e9f0;--soft:#f7f9fc;--surface:#ffffff;--header-bg:#fffffff5;--shadow:0 18px 60px #2134540b}`;
   res.writeHead(200,{'Content-Type':'text/css','Cache-Control':'no-cache'});return res.end(css);
  }
- let file;if(!remoteStorage&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
+ let file;if(/^\/article-media\/[a-z0-9-]+\.(?:png|jpg|webp)$/.test(path))file=resolve(root,'public',path.slice(1));else if(!remoteStorage&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
  const allowed={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/style.css':'style.css','/app.js':'app.js','/admin.js':'admin.js','/favicon.png':'favicon.png','/brand/SR_Rejvi_logo.png':'brand/SR_Rejvi_logo.png','/robots.txt':'robots.txt','/schema.js':'schema.js','/shared.js':'shared.js','/admin.css':'admin.css','/sw.js':'sw.js','/fonts/bengali-400.woff2':'fonts/bengali-400.woff2','/fonts/bengali-600.woff2':'fonts/bengali-600.woff2','/fonts/bengali-700.woff2':'fonts/bengali-700.woff2'};
  let selected=allowed[path];let pageTitle='',description='',articleBody='';
  if(!selected){const c=getContent();const pg=c.pages.find(p=>p.visible&&('/'+p.slug)===path);const pr=path.match(/^\/projects\/([\w-]+)$/);const ar=path.match(/^\/articles\/([a-z0-9-]+)$/);

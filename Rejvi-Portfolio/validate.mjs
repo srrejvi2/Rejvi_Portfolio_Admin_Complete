@@ -4,7 +4,7 @@ import {profileFields,collections} from './public/schema.js';
 export const fail=(status,message)=>{throw Object.assign(Error(message),{status});};
 export const str=(v,max=10000)=>{if(typeof v!=='string'||v.length>max)fail(400,'Text is missing or too long.');return v.trim();};
 export const email=v=>typeof v==='string'&&v.length<255&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-export const url=(v,asset=false)=>{v=str(v??'',2048);const localAsset=asset&&(/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(v)||/^\/brand\/[a-zA-Z0-9_.-]+\.(png|jpg|webp)$/.test(v)||v==='/favicon.png');if(v&&!localAsset){try{if(new URL(v).protocol!=='https:')throw Error();}catch{fail(400,'Use an HTTPS link or an uploaded asset.');}}return v;};
+export const url=(v,asset=false)=>{v=str(v??'',2048);const localAsset=asset&&(/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(v)||/^\/brand\/[a-zA-Z0-9_.-]+\.(png|jpg|webp)$/.test(v)||/^\/article-media\/[a-z0-9-]+\.(png|jpg|webp)$/.test(v)||v==='/favicon.png');if(v&&!localAsset){try{if(new URL(v).protocol!=='https:')throw Error();}catch{fail(400,'Use an HTTPS link or an uploaded asset.');}}return v;};
 const arr=(x,max=200)=>{if(!Array.isArray(x)||x.length>max)fail(400,`Expected a list with at most ${max} entries.`);return x;};
 const record=x=>{if(!x||typeof x!=='object'||Array.isArray(x))fail(400,'Invalid record.');return x;};
 function valField(f,v){if(['url','github','linkedin'].includes(f))return url(v);if(['photo','resume','image','logo','loaderLogo','favicon'].includes(f))return url(v,true);if(f==='gallery')return str(v).split('\n').filter(Boolean).map(x=>url(x,true)).join('\n');return str(v??'');}
@@ -12,7 +12,7 @@ export function validate(data){record(data);record(data.profile);record(data.sit
 for(const f of Object.keys(profileFields))c.profile[f]=valField(f,data.profile[f]);
 if(!c.profile.name||!c.profile.headline)fail(400,'Profile name and headline are required.');if(c.profile.email&&!email(c.profile.email))fail(400,'Invalid public email.');
 for(const [k,v] of Object.entries(defaults.site)){if(Array.isArray(v))continue;c.site[k]=typeof v==='boolean'?data.site[k]===true:valField(k,data.site[k]??v);}
-if(!['blue','violet','teal','rose','orange'].includes(c.site.accent)||!['cloud','midnight','warm','glass','ink'].includes(c.site.theme)||!['sans','editorial','mono','humanist','rounded','classic'].includes(c.site.font)||!['soft','square'].includes(c.site.corners)||!['cat','dog','bird','fox','robot'].includes(c.site.petType)||!/^(?:[1-9]|[1-9][0-9]|1[0-8][0-9])$/.test(String(c.site.petInterval||'')))fail(400,'Invalid appearance or visitor experience option.');
+if(!['blue','violet','teal','rose','orange'].includes(c.site.accent)||!['cloud','midnight','warm','glass','ink'].includes(c.site.theme)||!['sans','editorial','mono','humanist','rounded','classic'].includes(c.site.font)||!['soft','square'].includes(c.site.corners)||!['cat','dog','bird','fox','rabbit','panda','tiger','monkey','owl','penguin','turtle','robot'].includes(c.site.petType)||!/^(?:[1-9]|[1-9][0-9]|1[0-8][0-9])$/.test(String(c.site.petInterval||'')))fail(400,'Invalid appearance or visitor experience option.');
 c.site.socials=arr(data.site.socials||[],20).map(x=>({label:str(record(x).label,50),url:url(x.url)}));
 for(const [k,v] of Object.entries(defaults.copy))c.copy[k]=str(data.copy[k]??v,5000);
 const used=new Set(),ids=new Set();
