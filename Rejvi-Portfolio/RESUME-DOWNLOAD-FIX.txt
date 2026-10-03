@@ -1,0 +1,7 @@
+Resume download fix
+===================
+
+- /documents/*.pdf is now served directly by the Node server.
+- PDF files under public/documents no longer fall through to the SPA 404 page.
+- Resume PDFs are returned with Content-Disposition: attachment so the Download résumé button downloads the file.
+- Service worker cache version was bumped so browsers receive the fixed build.

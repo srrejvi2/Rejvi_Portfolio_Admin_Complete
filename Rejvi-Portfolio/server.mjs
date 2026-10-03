@@ -126,7 +126,7 @@ html[data-visitor-theme="dark"]{color-scheme:dark;--bg:#0b1220;--ink:#f5f7fb;--m
 html[data-visitor-theme="light"]{color-scheme:light;--bg:#ffffff;--ink:#182034;--muted:#667086;--line:#e5e9f0;--soft:#f7f9fc;--surface:#ffffff;--header-bg:#fffffff5;--shadow:0 18px 60px #2134540b}`;
   res.writeHead(200,{'Content-Type':'text/css','Cache-Control':'no-cache'});return res.end(css);
  }
- let file;if(/^\/article-media\/[a-z0-9-]+\.(?:png|jpg|webp)$/.test(path))file=resolve(root,'public',path.slice(1));else if(!remoteStorage&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
+ let file;if(/^\/documents\/[a-zA-Z0-9_.-]+\.pdf$/.test(path))file=resolve(root,'public',path.slice(1));else if(/^\/article-media\/[a-z0-9-]+\.(?:png|jpg|webp)$/.test(path))file=resolve(root,'public',path.slice(1));else if(!remoteStorage&&/^\/uploads\/[a-f0-9]+\.(png|jpg|webp|pdf)$/.test(path))file=resolve(dataDir,path.slice(1));else {
  const allowed={'/':'index.html','/admin':'admin.html','/admin/':'admin.html','/style.css':'style.css','/app.js':'app.js','/admin.js':'admin.js','/favicon.png':'favicon.png','/brand/SR_Rejvi_logo.png':'brand/SR_Rejvi_logo.png','/robots.txt':'robots.txt','/schema.js':'schema.js','/shared.js':'shared.js','/admin.css':'admin.css','/sw.js':'sw.js','/fonts/bengali-400.woff2':'fonts/bengali-400.woff2','/fonts/bengali-600.woff2':'fonts/bengali-600.woff2','/fonts/bengali-700.woff2':'fonts/bengali-700.woff2'};
  let selected=allowed[path];let pageTitle='',description='',articleBody='';
  if(!selected){const c=getContent();const pg=c.pages.find(p=>p.visible&&('/'+p.slug)===path);const pr=path.match(/^\/projects\/([\w-]+)$/);const ar=path.match(/^\/articles\/([a-z0-9-]+)$/);
@@ -144,7 +144,7 @@ html[data-visitor-theme="light"]{color-scheme:light;--bg:#ffffff;--ink:#182034;-
  }
  file=resolve(root,'public',selected);}
  const bytes=await readFile(file);const types={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.pdf':'application/pdf','.txt':'text/plain','.woff2':'font/woff2'};
- res.writeHead(200,{'Content-Type':types[extname(file)]||'application/octet-stream','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:bytes);
+ const headers={'Content-Type':types[extname(file)]||'application/octet-stream','Cache-Control':'no-cache'};if(path.startsWith('/documents/')&&extname(file)==='.pdf')headers['Content-Disposition']='attachment; filename="'+path.split('/').pop().replace(/[^a-zA-Z0-9_.-]/g,'_')+'"';res.writeHead(200,headers);res.end(req.method==='HEAD'?undefined:bytes);
  }catch(e){if(!res.headersSent)send(e.status||(e.code==='ENOENT'?404:500),{error:e.status?e.message:e.code==='ENOENT'?'File not found.':'Server error. Please try again.'});else res.end();if(!e.status&&e.code!=='ENOENT')console.error(e);}
 });
 server.requestTimeout=15000;server.headersTimeout=10000;
