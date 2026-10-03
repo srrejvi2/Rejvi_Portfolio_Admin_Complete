@@ -5,3 +5,10 @@
 .media-item .media-delete{width:100%;margin-top:10px}.media-item>small .status-badge{display:inline-flex;margin-left:6px;vertical-align:middle}.media-item-actions{min-height:28px}
 
 .event-template-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.event-template-tools .button{margin:0}
+
+/* SR_Rejvi admin branding */
+.admin-login-brand{display:flex;flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:28px}
+.admin-login-brand img{width:min(235px,72%);height:auto;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(49,91,255,.10))}
+.admin-login-brand span{font-size:.64rem;letter-spacing:.18em;color:var(--accent);font-weight:800}
+.studio-brand-logo{width:58px;height:40px;object-fit:contain;object-position:left center;flex:0 0 auto}
+@media(max-width:700px){.studio-brand-logo{width:54px;height:36px}.admin-login-brand img{width:min(220px,80%)}}

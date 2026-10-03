@@ -159,3 +159,21 @@ Tests use temporary databases and ports 3187/3188. They cover authentication, CS
 Runtime/deployment references:
 - https://nodejs.org/download/release/latest-v24.x/docs/api/sqlite.html
 - https://render.com/docs/disks
+
+
+## Added logo asset
+- New stylish logo file added at `public/brand/SR_Rejvi_logo.png`
+- Extra copy at project root: `SR_Rejvi_logo.png`
+
+
+## Logo integration update
+- Header now uses the `SR_Rejvi` logo by default.
+- Site loader now shows the same logo.
+- Website and admin favicon now point to `/public/brand/SR_Rejvi_logo.png`.
+
+
+## Complete SR_Rejvi branding
+- Header uses the SR_Rejvi wordmark with a safe fallback even when older saved site data has no logo value.
+- Footer now uses the SR_Rejvi wordmark.
+- Loader and favicon use the SR_Rejvi asset.
+- Admin login and sidebar use coordinated SR_Rejvi branding.
